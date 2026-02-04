@@ -1,11 +1,14 @@
 // adding script to MatterJS in HTML file added a global variable called Matter; here we are destructuring objects from the Matter object for access and use
 const { Engine, Render, Runner, World, Bodies, Body, Events } = Matter;
 
-const cells = 6;
-const width = 600;
-const height = 600;
+const cellsHorizontal = 6;
+const cellsVertical = 4;
+// fills canvas to size of screen
+const width = window.innerWidth;
+const height = window.innerHeight;
 
-const unitLength = width / cells;
+const unitLengthX = width / cellsHorizontal;
+const unitLengthY = height / cellsVertical;
 
 const engine = Engine.create();
 // disables gravity in the y direction
@@ -18,7 +21,7 @@ const render = Render.create({
     element: document.body,
     engine: engine,
     options: {
-        wireframes: true, // gives us solid shaped with randomised colours
+        wireframes: false, // gives us solid shaped with randomised colours
         width,
         height
     }
@@ -31,10 +34,10 @@ Runner.run(Runner.create(), engine);
 const walls = [
     // first two dimensions determine where the center of our object is placed own the screen
     // second two dimensions determine the height and width of the rectangle
-    Bodies.rectangle(width/2, 0, width, 2, {isStatic: true}),
-    Bodies.rectangle(width/2, height, width, 2, {isStatic: true}),
-    Bodies.rectangle(0, height/2, 2, height, {isStatic: true}),
-    Bodies.rectangle(width, height/2, 2, height, {isStatic: true})
+    Bodies.rectangle(width/2, 0, width, 5, {isStatic: true}),
+    Bodies.rectangle(width/2, height, width, 5, {isStatic: true}),
+    Bodies.rectangle(0, height/2, 5, height, {isStatic: true}),
+    Bodies.rectangle(width, height/2, 5, height, {isStatic: true})
 ];
 
 // need to add shapes we create to the world object in order for them to show up
@@ -60,21 +63,21 @@ const shuffle = (arr) => {
 };
 
 // cannot do direct fill with false from the get-go because when we use Array, it creates identical inner arrays in memory. changes to one array would affect all arrays since they have the same reference in memory.
-const grid = Array(cells)
+const grid = Array(cellsVertical) // need to use the variable that corresponds to number of ROWS (grid outer array)
     .fill(null)
-    .map(() => Array(cells).fill(false));
+    .map(() => Array(cellsHorizontal).fill(false)); // need to use the variable that corresponds to columns as .map is building out the inner row
 
-const verticals = Array(cells)
+const verticals = Array(cellsVertical)
     .fill(null)
-    .map(() => Array(cells - 1).fill(false));
+    .map(() => Array(cellsHorizontal - 1).fill(false));
 
-const horizontals = Array(cells - 1)
+const horizontals = Array(cellsVertical - 1)
     .fill(null)
-    .map(() => Array(cells).fill(false));
+    .map(() => Array(cellsHorizontal).fill(false));
 
 // generate random starting point
-const startRow = Math.floor(Math.random() * cells);
-const startColumn = Math.floor(Math.random() * cells);
+const startRow = Math.floor(Math.random() * cellsVertical);
+const startColumn = Math.floor(Math.random() * cellsHorizontal);
 
 const stepThroughCell = (row, column) => {
     // if I have visited the cell at [row, column], then return
@@ -98,7 +101,7 @@ const stepThroughCell = (row, column) => {
     for (let neighbor of neighbors) {
         const [nextRow, nextColumn, direction] = neighbor;
     // See if that neighbour is out of bounds
-        if (nextRow < 0 || nextRow >= cells || nextColumn < 0 || nextColumn >= cells) {
+        if (nextRow < 0 || nextRow >= cellsVertical || nextColumn < 0 || nextColumn >= cellsHorizontal) {
             continue;
         }
 
@@ -134,13 +137,16 @@ horizontals.forEach((row, rowIndex) => {
         }
 
         const wall = Bodies.rectangle(
-            columnIndex * unitLength + unitLength / 2,
-            rowIndex * unitLength + unitLength,
-            unitLength,
-            10,
+            columnIndex * unitLengthX + unitLengthX / 2,
+            rowIndex * unitLengthY + unitLengthY,
+            unitLengthX,
+            5,
             {
                 isStatic: true,
-                label: 'wall'
+                label: 'wall',
+                render: {
+                    fillStyle: 'LavenderBlush'
+                }
             }
         );
 
@@ -155,13 +161,16 @@ verticals.forEach((row, rowIndex) => {
         }
 
         const wall = Bodies.rectangle(
-            columnIndex * unitLength + unitLength,
-            rowIndex * unitLength + unitLength / 2,
-            10,
-            unitLength,
+            columnIndex * unitLengthX + unitLengthX,
+            rowIndex * unitLengthY + unitLengthY / 2,
+            5,
+            unitLengthY,
             {
                 isStatic: true,
-                label: 'wall'
+                label: 'wall',
+                render: {
+                    fillStyle: 'LavenderBlush'
+                }
             }
         );
 
@@ -171,25 +180,32 @@ verticals.forEach((row, rowIndex) => {
 
 // Goal
 const goal = Bodies.rectangle(
-    width - unitLength / 2,
-    height - unitLength / 2,
-    unitLength * 0.75,
-    unitLength * 0.75,
+    width - unitLengthX / 2,
+    height - unitLengthY / 2,
+    unitLengthX * 0.75,
+    unitLengthY * 0.75,
     {
         isStatic: true,
-        label: 'goal'
+        label: 'goal',
+        render: {
+            fillStyle: 'MistyRose'
+        }
     }
 );
 
 World.add(world, goal);
 
 // Ball
+const ballRadius = Math.min(unitLengthX, unitLengthY) / 4;
 const ball = Bodies.circle(
-    unitLength / 2,
-    unitLength / 2,
-    unitLength / 4,
+    unitLengthX / 2,
+    unitLengthY / 2,
+    ballRadius,
     {
-        label: 'ball'
+        label: 'ball',
+        render: {
+            fillStyle: 'AliceBlue'
+        }
     }
 );
 
@@ -231,6 +247,7 @@ Events.on(engine, 'collisionStart', event => {
             labels.includes(collision.bodyA.label) && 
             labels.includes(collision.bodyB.label)
         ) {
+            document.querySelector('.winner').classList.remove('hidden');
             // if user wins, collapse the maze!
             world.gravity.y = 1;
             world.bodies.forEach(body => {
