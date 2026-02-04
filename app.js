@@ -1,13 +1,16 @@
 // adding script to MatterJS in HTML file added a global variable called Matter; here we are destructuring objects from the Matter object for access and use
-const { Engine, Render, Runner, World, Bodies } = Matter;
+const { Engine, Render, Runner, World, Bodies, Body, Events } = Matter;
 
-const cells = 3;
+const cells = 6;
 const width = 600;
 const height = 600;
 
 const unitLength = width / cells;
 
 const engine = Engine.create();
+// disables gravity in the y direction
+
+engine.world.gravity.y = 0;
 // when we create a new Engine, we receive a world object with it
 const { world } = engine;
 const render = Render.create({
@@ -28,10 +31,10 @@ Runner.run(Runner.create(), engine);
 const walls = [
     // first two dimensions determine where the center of our object is placed own the screen
     // second two dimensions determine the height and width of the rectangle
-    Bodies.rectangle(width/2, 0, width, 40, {isStatic: true}),
-    Bodies.rectangle(width/2, height, width, 40, {isStatic: true}),
-    Bodies.rectangle(0, height/2, 40, height, {isStatic: true}),
-    Bodies.rectangle(width, height/2, 40, height, {isStatic: true})
+    Bodies.rectangle(width/2, 0, width, 2, {isStatic: true}),
+    Bodies.rectangle(width/2, height, width, 2, {isStatic: true}),
+    Bodies.rectangle(0, height/2, 2, height, {isStatic: true}),
+    Bodies.rectangle(width, height/2, 2, height, {isStatic: true})
 ];
 
 // need to add shapes we create to the world object in order for them to show up
@@ -136,7 +139,8 @@ horizontals.forEach((row, rowIndex) => {
             unitLength,
             10,
             {
-                isStatic: true
+                isStatic: true,
+                label: 'wall'
             }
         );
 
@@ -156,10 +160,84 @@ verticals.forEach((row, rowIndex) => {
             10,
             unitLength,
             {
-                isStatic: true
+                isStatic: true,
+                label: 'wall'
             }
         );
 
         World.add(world, wall);
+    });
+});
+
+// Goal
+const goal = Bodies.rectangle(
+    width - unitLength / 2,
+    height - unitLength / 2,
+    unitLength * 0.75,
+    unitLength * 0.75,
+    {
+        isStatic: true,
+        label: 'goal'
+    }
+);
+
+World.add(world, goal);
+
+// Ball
+const ball = Bodies.circle(
+    unitLength / 2,
+    unitLength / 2,
+    unitLength / 4,
+    {
+        label: 'ball'
+    }
+);
+
+World.add(world, ball);
+
+document.addEventListener('keydown', event => {
+    const { x, y } = ball.velocity;
+    // console.log(x, y);
+
+    // move ball up w/ W key
+    if (event.keyCode === 87) {
+        Body.setVelocity(ball, { x, y: y - 5 });
+    }
+
+    // move ball right w/ D key
+    if (event.keyCode === 68) {
+        Body.setVelocity(ball, { x: x + 5, y });
+    }
+
+    // move ball down with S key
+    if (event.keyCode === 83) {
+        Body.setVelocity(ball, { x: x, y: y + 5});
+    }
+
+    // move ball left with A key
+    if (event.keyCode === 65) {
+        Body.setVelocity(ball, { x: x - 5, y })
+    }
+
+})
+
+// Win Condition
+
+Events.on(engine, 'collisionStart', event => {
+    event.pairs.forEach((collision) => {
+        const labels = ['ball', 'goal'];
+
+        if (
+            labels.includes(collision.bodyA.label) && 
+            labels.includes(collision.bodyB.label)
+        ) {
+            // if user wins, collapse the maze!
+            world.gravity.y = 1;
+            world.bodies.forEach(body => {
+                if (body.label === 'wall') {
+                    Body.setStatic(body, false);
+                }
+            });
+        }
     });
 });
